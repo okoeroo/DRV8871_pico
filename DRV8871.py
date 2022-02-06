@@ -95,7 +95,7 @@ class DRV8871(object):
 
 ### MAIN
 if __name__ == '__main__':
-    from machine import ADC, Pin
+    from machine import ADC
     import utime
     
     adc0 = ADC(26)
