@@ -28,14 +28,14 @@ class DRV8871(object):
     def forward(self, val_u16):
         inverse = int(self._map_min_max(val_u16, 0, 65535, 65535, 0))
 
-        self._pwm1.duty_u16(self.MAX)
-        self._pwm2.duty_u16(inverse)
+        self._pwm1.duty_u16(inverse)
+        self._pwm2.duty_u16(self.MAX)
 
     def backward(self, val_u16):
         inverse = int(self._map_min_max(val_u16, 0, 65535, 65535, 0))
         
-        self._pwm1.duty_u16(inverse)
-        self._pwm2.duty_u16(self.MAX)
+        self._pwm1.duty_u16(self.MAX)
+        self._pwm2.duty_u16(inverse)
 
     def zero(self):
         self._pwm1.duty_u16(self.MIN)
