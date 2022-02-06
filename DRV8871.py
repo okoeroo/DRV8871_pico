@@ -46,35 +46,51 @@ class DRV8871(object):
 
     # Divide the value 50-50.
     # The lower end will move backward, otherwise forward. Both using interpolation.
-    def value(self, value, scale_min=0, scale_max=65535):
+    # Default 16-bit resolution on the value
+    # Note only positive scale and value
+    def value(self, value, scale_min=0, scale_max=(2**16-1)):
         if value > scale_max:
             raise ValueError("Value overflow")
         
         if value < scale_min:
             raise ValueError("Value underflow")
         
-        balance = int(self._map_min_max(value, scale_min, scale_max, -65535, 65535) - 0.1)
-        output  = int(self._map_min_max(value, scale_min, scale_max,      0, 65535) - 0.1)
-        
-        if balance < 0:
-            self.backward(output)
-            direction = "backward"
-        elif balance == 0:
-            self.zero()
-            direction = "to zero"
-        elif balance > 0 and balance < self._tolerance_buffer:
+        # Calculate median based on the provided scale
+        median = (scale_min + scale_max) // 2
+
+        # scale
+        output  = int(self._map_min_max(value, scale_min, scale_max, 0, 65535) - 0.1)
+         
+        # Direction selection and power the engines!
+        if value > median and value < (median + self._tolerance_buffer):
             self.zero()
             direction = "to zero (within upper balance)"
-        elif balance < 0 and balance > self._tolerance_buffer:
+            output = median
+
+        elif value < median and value > (median - self._tolerance_buffer):
             self.zero()
-            direction = "to zero (within lower balance)"        
-        else:
-            self.forward(output)
-            direction = "forward"
+            direction = "to zero (within lower balance)"
+            output = median
+
+        elif value == median:
+            self.zero()
+            direction = "to zero"
+            output = median
+
+        elif value < median:           
+            result = median - value
+            output  = int(self._map_min_max(result, 0, median, 0, 65535) - 0.1)
+            self.backward(output)
+            direction = "backward"
+
+        elif value > median:
+            result = value - median
             
-        return 'Moving {} value: {} balance: {} output: {}'.format(direction, value, balance, output)
-
-
+            output  = int(self._map_min_max(result, 0, median, 0, 65535) - 0.1)
+            self.forward(output)
+            direction = "forward"   
+    
+        return f'Moving direction: {direction: >31}, value: {value: >5}, median: {median: >5}, output: {output: >5}'
 
 
 ### MAIN
@@ -85,25 +101,25 @@ if __name__ == '__main__':
     adc0 = ADC(26)
     drv0 = DRV8871(10, 11)
     
-    drv0.value(0)
-    drv0.value(2 ** 14)
-    drv0.value(2 ** 15)
-    drv0.value(2 ** 15 + 2 ** 14)
-    drv0.value(2 ** 16 - 1)
+    print(drv0.value(0))
+    print(drv0.value(2 ** 14))
+    print(drv0.value(2 ** 15 - 1))
+    print(drv0.value(2 ** 15 + 2 ** 14))
+    print(drv0.value(2 ** 16 - 1))
     
     # forward
     r0 = adc0.read_u16()
     print("forward...", r0)
     drv0.forward(r0)
 
-    utime.sleep(3)
+    utime.sleep(2)
 
     # backward
     r0 = adc0.read_u16()
     print("backward...", r0)
     drv0.backward(r0)
 
-    utime.sleep(3)
+    utime.sleep(2)
     
     drv0.set_tolerance_buffer(3000)
 
