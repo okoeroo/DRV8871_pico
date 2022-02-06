@@ -26,11 +26,15 @@ class DRV8871(object):
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
     def forward(self, val_u16):
+        inverse = int(self._map_min_max(val_u16, 0, 65535, 65535, 0))
+
         self._pwm1.duty_u16(self.MAX)
-        self._pwm2.duty_u16(val_u16)
+        self._pwm2.duty_u16(inverse)
 
     def backward(self, val_u16):
-        self._pwm1.duty_u16(val_u16)
+        inverse = int(self._map_min_max(val_u16, 0, 65535, 65535, 0))
+        
+        self._pwm1.duty_u16(inverse)
         self._pwm2.duty_u16(self.MAX)
 
     def zero(self):
@@ -101,6 +105,19 @@ if __name__ == '__main__':
     adc0 = ADC(26)
     drv0 = DRV8871(10, 11)
     
+    
+    print("Expecting 0V")
+    drv0.forward(0)
+    
+    utime.sleep(10)
+
+    print("Expecting 10V")
+    drv0.forward(65535)
+    utime.sleep(10)
+
+
+
+    
     print(drv0.value(0))
     print(drv0.value(2 ** 14))
     print(drv0.value(2 ** 15 - 1))
@@ -112,7 +129,7 @@ if __name__ == '__main__':
     print("forward...", r0)
     drv0.forward(r0)
 
-    utime.sleep(2)
+    utime.sleep(5)
 
     # backward
     r0 = adc0.read_u16()
